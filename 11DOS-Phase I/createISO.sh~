@@ -1,0 +1,1 @@
+grub-mkrescue -o 11DOS.iso ~/OS_Dev/11DOS/

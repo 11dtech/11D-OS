@@ -1,0 +1,90 @@
+#include "memory.h"
+
+void *global_base = NULL;
+
+struct block_meta *find_free_block(struct block_meta **last, uint16 size) {
+  struct block_meta *current = global_base;												//start linked list at the global base
+  while (current && !(current->free && current->size >= size)) {					//if the pointed block is larger than the size requested and is free
+    *last = current;																				//store current as last
+    current = current->next;																	//move on to the next block
+  }
+  return current;
+}
+
+struct block_meta *get_block_ptr(void *ptr) {	//the block meta data is storage in one block before the storage pointer
+  return (struct block_meta*)ptr - 1;
+}
+
+struct block_meta *request_space(struct block_meta* last, uint16 size) {	//request block
+  struct block_meta *block;
+  block = sbrk(0);																			//get the current break address
+  void *request = sbrk(size + META_SIZE);												//return block start address
+  //assert((void*)block == request); // Not thread safe.
+  if (request == (void*) -1) {
+    return NULL; 																				// sbrk failed.
+  }
+
+  if (last) { 																					// NULL on first request.
+    last->next = block;																		// set next to block start address
+  }
+  block->size = size;																		//update to requested block size
+  block->next = NULL;																		//
+  block->free = 0;																			//mark not free
+  block->magic = 0x12345678;
+  return block;
+}
+
+void *mallocX(uint16 size) {
+  struct block_meta *block;
+  // TODO: align size?
+
+  if (size <= 0) {
+    return NULL;
+  }
+
+  if (!global_base) { 																		// First call.
+    block = request_space(NULL, size);
+    if (!block) {
+      return NULL;
+    }
+    global_base = block;																	//global_base is the memory starting address
+  } else {
+    struct block_meta *last = global_base;											//update last before request_space
+    block = find_free_block(&last, size);												//find resuable free block
+    if (!block) { 																			//failed to find free block.
+      block = request_space(last, size);												//request new memory
+      if (!block) {
+        return NULL;																			//no memory available
+      }
+    } else {      // Found free block
+      // TODO: consider splitting block here.
+      block->free = 0;																		//reuse memory block
+      block->magic = 0x77777777;
+    }
+  }
+
+  return(block+1);																			//return the usable memory starting address (1 after block meta)
+}
+
+void free(void *ptr) {
+  if (!ptr) {
+    return;
+  }
+
+  // TODO: consider merging blocks once splitting blocks is implemented.
+  struct block_meta* block_ptr = get_block_ptr(ptr);
+  //assert(block_ptr->free == 0);
+  //assert(block_ptr->magic == 0x77777777 || block_ptr->magic == 0x12345678);
+  block_ptr->free = 1;
+  block_ptr->magic = 0x55555555;
+}
+
+void *sbrk(int nbytes){
+	if(nbytes < 0){
+		return NULL;				//do not allow negative increment
+	}else if(nbytes == 0){
+		return ptr;					//return current pointer position
+	}else{
+		return ptr;					//return block starting address
+	}
+}

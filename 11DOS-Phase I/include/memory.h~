@@ -1,0 +1,18 @@
+#ifndef MEMORY_H
+#define MEMORY_H
+#include "types.h"
+
+struct block_meta{
+	uint16 size;
+	struct block_meta *next;
+	int free;
+	int magic;
+};
+
+#define META_SIZE sizeof(struct block_meta)
+
+void *mallocX(uint16 size);
+
+void free(void *ptr);
+
+#endif
