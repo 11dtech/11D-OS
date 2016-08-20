@@ -1,1 +1,1 @@
-# 11D-OS
+11D-Operating System is created for an operating system development project that aims to enhance understanding of operating system. The project will use GRUB for booting, then use assembly language to bring in the kernel, which will be written in C. The kernel will include necessary device driver, exception handling and memmory management. 
